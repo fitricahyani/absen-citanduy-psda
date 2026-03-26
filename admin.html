@@ -89,14 +89,16 @@
     </div>
 
     <script>
-     // Konfigurasi Supabase
-const SB_URL = 'https://cktrzythksyayhbxdxdn.supabase.co'; 
+        // Konfigurasi Supabase (HARUS SAMA DENGAN INDEX)
+onst SB_URL = 'https://cktrzythksyayhbxdxdn.supabase.co'; 
     const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNrdHJ6eXRoa3N5YXloYnhkeGRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0OTY5NTMsImV4cCI6MjA5MDA3Mjk1M30.hj1NaPkhmPJJ7gCJ5Q-gQTpueWXiNmxVhGz-x5-81QQ';
+
 const { createClient } = supabase;
 
-// PASTIKAN pakai SB_URL dan SB_KEY, jangan SUPABASE_URL
-const _supabase = createClient(SB_URL, SB_KEY);
+// Pastikan di sini memanggil SB_URL dan SB_KEY
+const dbSupabase = createClient(SB_URL, SB_KEY); 
 
+const TABEL = 'laporan_absen';
 
     async function loadData() {
         const tbody = document.getElementById('table-body');
