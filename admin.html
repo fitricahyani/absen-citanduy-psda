@@ -89,12 +89,14 @@
     </div>
 
     <script>
-    // Konfigurasi Supabase - SUDAH DIPERBAIKI
-    const SB_URL = 'https://cktrzythksyayhbxdxdn.supabase.co'; 
+     // Konfigurasi Supabase
+const SB_URL = 'https://cktrzythksyayhbxdxdn.supabase.co'; 
     const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNrdHJ6eXRoa3N5YXloYnhkeGRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0OTY5NTMsImV4cCI6MjA5MDA3Mjk1M30.hj1NaPkhmPJJ7gCJ5Q-gQTpueWXiNmxVhGz-x5-81QQ';
-    
-    // Inisialisasi menggunakan variabel yang benar
-    const dbSupabase = supabase.createClient(SB_URL, SB_KEY);
+const { createClient } = supabase;
+
+// PASTIKAN pakai SB_URL dan SB_KEY, jangan SUPABASE_URL
+const _supabase = createClient(SB_URL, SB_KEY);
+
 
     async function loadData() {
         const tbody = document.getElementById('table-body');
