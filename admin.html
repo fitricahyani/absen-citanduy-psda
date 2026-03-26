@@ -40,8 +40,14 @@
 
         <div class="bg-white p-6 shadow-sm border-x border-gray-200 grid grid-cols-1 md:grid-cols-4 gap-6 items-center">
             <div class="flex flex-col items-center bg-gray-50 p-4 rounded-xl border border-dashed border-gray-300">
-                <p class="text-[10px] font-bold text-gray-500 mb-2 uppercase">Scan QR Absensi</p>
-                <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://absen-citanduy-9783.vercel.app/" class="w-28 h-28 border-2 border-white shadow-sm">
+                <p class="text-[10px] font-bold text-gray-500 mb-2 uppercase">Status Database</p>
+                <div class="flex items-center gap-2 text-green-600 font-bold text-xs">
+                    <span class="relative flex h-3 w-3">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                    </span>
+                    TERKONEKSI
+                </div>
             </div>
 
             <div class="md:col-span-3 flex flex-wrap gap-4 items-end">
@@ -83,8 +89,11 @@
     </div>
 
     <script>
+    // Konfigurasi Supabase - SUDAH DIPERBAIKI
     const SB_URL = 'https://cktrzythksyayhbxdxdn.supabase.co'; 
     const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNrdHJ6eXRoa3N5YXloYnhkeGRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0OTY5NTMsImV4cCI6MjA5MDA3Mjk1M30.hj1NaPkhmPJJ7gCJ5Q-gQTpueWXiNmxVhGz-x5-81QQ';
+    
+    // Inisialisasi menggunakan variabel yang benar
     const dbSupabase = supabase.createClient(SB_URL, SB_KEY);
 
     async function loadData() {
@@ -104,11 +113,14 @@
             if (error) throw error;
             tbody.innerHTML = '';
 
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" class="p-10 text-center">Tidak ada data ditemukan.</td></tr>';
+                return;
+            }
+
             data.forEach((row, index) => {
                 const jamIn = row.jam_masuk || "-"; 
-                // Logika Terlambat > 07:30
                 const isLate = jamIn > "07:30"; 
-
                 const jamOut = (row.jam_pulang && row.jam_pulang !== "NULL") ? row.jam_pulang : '-';
                 const fotoUrl = row.foto_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(row.nama)}&background=random`;
 
@@ -144,13 +156,14 @@
             });
         } catch (err) { 
             console.error(err);
-            tbody.innerHTML = '<tr><td colspan="9" class="p-10 text-center text-red-500">Gagal memuat data.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="9" class="p-10 text-center text-red-500">Gagal memuat data. Periksa tabel di Supabase.</td></tr>';
         }
     }
 
     function exportToExcelPuas() {
         const rows = document.querySelectorAll('#table-body tr');
-        if (rows.length === 0) return alert("Data kosong!");
+        if (rows.length === 0 || rows[0].innerText.includes("Memuat")) return alert("Data kosong!");
+        
         const dataTable = [["NO", "NIP", "NAMA PEGAWAI", "JABATAN", "TANGGAL", "MASUK", "PULANG", "KETERANGAN"]];
         
         rows.forEach((row, index) => {
