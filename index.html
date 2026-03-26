@@ -40,7 +40,12 @@
         }
 
         .logo-container { text-align: center; margin-top: 10px; margin-bottom: 10px; }
-        .logo-img { max-width: 70px; height: auto; }
+        .logo-img { 
+            max-width: 70px; 
+            height: auto; 
+            display: block;
+            margin: 0 auto;
+        }
         
         .header-text { text-align: center; margin-bottom: 20px; }
         .header-text h5 { font-weight: 800; color: #2d3436; margin: 0; font-size: 1.1rem; }
@@ -78,6 +83,7 @@
             align-items: center;
             justify-content: center;
             gap: 10px;
+            transition: all 0.3s;
         }
 
         .btn-masuk { 
@@ -92,6 +98,8 @@
             color: #e74c3c; 
             border: 2px solid #e74c3c; 
         }
+
+        .btn-absensi:active { transform: scale(0.98); }
 
         .loading-overlay { 
             display: none; 
@@ -114,7 +122,7 @@
     </div>
 
     <div class="logo-container">
-        <img src="https://uptdpsdawscitanduy.wargaloka.org/img/logo-jabar.png" alt="Logo" class="logo-img">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/ad/Logo_Provinsi_Jawa_Barat.png/600px-Logo_Provinsi_Jawa_Barat.png" alt="Logo Jabar" class="logo-img">
     </div>
 
     <div class="header-text">
@@ -170,14 +178,13 @@
 </div>
 
 <script>
-    // 1. Konfigurasi Supabase
+    // Konfigurasi Supabase
     const SUPABASE_URL = 'https://cktrzythksyayhbxdxdn.supabase.co'; 
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNrdHJ6eXRoa3N5YXloYnhkeGRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0OTY5NTMsImV4cCI6MjA5MDA3Mjk1M30.hj1NaPkhmPJJ7gCJ5Q-gQTpueWXiNmxVhGz-x5-81QQ'; // Pastikan ini 'anon key' kamu
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNrdHJ6eXRoa3N5YXloYnhkeGRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0OTY5NTMsImV4cCI6MjA5MDA3Mjk1M30.hj1NaPkhmPJJ7gCJ5Q-gQTpueWXiNmxVhGz-x5-81QQ'; 
     const { createClient } = supabase;
     const _supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
     const TABEL = 'laporan_absen';
 
-    // Update Jam Real-time
     function updateWaktu() {
         const sekarang = new Date();
         const jam = String(sekarang.getHours()).padStart(2, '0');
@@ -207,10 +214,9 @@
         const sekarang = new Date();
         const jamSekarang = sekarang.getHours();
         const menitSekarang = sekarang.getMinutes();
-        const tgl = sekarang.toISOString().split('T')[0]; // Format YYYY-MM-DD
+        const tgl = sekarang.toISOString().split('T')[0];
         const jamMenitString = `${String(jamSekarang).padStart(2, '0')}:${String(menitSekarang).padStart(2, '0')}`;
 
-        // Validasi Jam Pulang (Contoh minimal jam 16:00)
         if(status === 'Pulang' && jamSekarang < 16) {
             return alert("Belum waktunya pulang! Minimal jam 16:00.");
         }
@@ -222,17 +228,15 @@
 
             try {
                 if(status === 'Masuk') {
-                    // Cek apakah sudah absen masuk hari ini
                     const { data: cekAda } = await _supabase.from(TABEL).select('id').eq('nip', nip).eq('tanggal', tgl).maybeSingle();
                     if(cekAda) {
                         alert("Anda sudah absen masuk hari ini!");
+                        document.getElementById('loader').style.display = 'none';
                         return;
                     }
 
-                    // Logika Keterlambatan
                     let statusKehadiran = (jamSekarang > 7 || (jamSekarang === 7 && menitSekarang > 30)) ? 'Terlambat' : 'Hadir';
 
-                    // Upload Foto ke Storage
                     let urlFoto = "";
                     if(fotoFile) {
                         const fileName = `${Date.now()}_${nip}.jpg`;
@@ -243,7 +247,6 @@
                         urlFoto = publicUrlData.publicUrl;
                     }
 
-                    // Insert ke Tabel
                     const { error: insertError } = await _supabase.from(TABEL).insert([{ 
                         nip, nama, jabatan, tanggal: tgl, 
                         jam_masuk: jamMenitString, status: statusKehadiran, 
@@ -254,8 +257,7 @@
                     alert(statusKehadiran === 'Terlambat' ? "Absen Berhasil (Anda Terlambat!)" : "Absen Masuk Berhasil!");
 
                 } else {
-                    // Logika Pulang: Cari data masuk hari ini berdasarkan NIP dan Tanggal
-                    const { data: dataMasuk, error: errorCek } = await _supabase
+                    const { data: dataMasuk } = await _supabase
                         .from(TABEL)
                         .select('id')
                         .eq('nip', nip)
@@ -263,7 +265,8 @@
                         .maybeSingle();
 
                     if(!dataMasuk) {
-                        alert("Data masuk hari ini tidak ditemukan! Absen masuk dulu.");
+                        alert("Data masuk hari ini tidak ditemukan!");
+                        document.getElementById('loader').style.display = 'none';
                         return;
                     }
 
