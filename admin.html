@@ -83,154 +83,151 @@
                     </tr>
                 </thead>
                 <tbody id="table-body" class="text-xs font-medium text-gray-700 divide-y divide-gray-100 uppercase">
-                    </tbody>
+                </tbody>
             </table>
         </div>
     </div>
 
     <script>
-        // Konfigurasi Supabase (HARUS SAMA DENGAN INDEX)
-onst SB_URL = 'https://cktrzythksyayhbxdxdn.supabase.co'; 
-    const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNrdHJ6eXRoa3N5YXloYnhkeGRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0OTY5NTMsImV4cCI6MjA5MDA3Mjk1M30.hj1NaPkhmPJJ7gCJ5Q-gQTpueWXiNmxVhGz-x5-81QQ';
+        // Konfigurasi Supabase
+        const SB_URL = 'https://cktrzythksyayhbxdxdn.supabase.co'; 
+        const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNrdHJ6eXRoa3N5YXloYnhkeGRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0OTY5NTMsImV4cCI6MjA5MDA3Mjk1M30.hj1NaPkhmPJJ7gCJ5Q-gQTpueWXiNmxVhGz-x5-81QQ';
+        const { createClient } = supabase;
+        const dbSupabase = createClient(SB_URL, SB_KEY); 
 
-const { createClient } = supabase;
+        const TABEL = 'laporan_absen';
 
-// Pastikan di sini memanggil SB_URL dan SB_KEY
-const dbSupabase = createClient(SB_URL, SB_KEY); 
-
-const TABEL = 'laporan_absen';
-
-    async function loadData() {
-        const tbody = document.getElementById('table-body');
-        tbody.innerHTML = '<tr><td colspan="9" class="p-10 text-center italic">Memuat data...</td></tr>';
-        
-        const start = document.getElementById('filter-mulai').value;
-        const end = document.getElementById('filter-sampai').value;
-
-        try {
-            let query = dbSupabase.from('laporan_absen').select('*');
-            if (start) query = query.gte('tanggal', start);
-            if (end) query = query.lte('tanggal', end);
+        async function loadData() {
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = '<tr><td colspan="9" class="p-10 text-center italic">Memuat data...</td></tr>';
             
-            const { data, error } = await query.order('tanggal', { ascending: false }).order('jam_masuk', { ascending: false });
-            
-            if (error) throw error;
-            tbody.innerHTML = '';
+            const start = document.getElementById('filter-mulai').value;
+            const end = document.getElementById('filter-sampai').value;
 
-            if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="9" class="p-10 text-center">Tidak ada data ditemukan.</td></tr>';
-                return;
+            try {
+                let query = dbSupabase.from(TABEL).select('*');
+                if (start) query = query.gte('tanggal', start);
+                if (end) query = query.lte('tanggal', end);
+                
+                const { data, error } = await query.order('tanggal', { ascending: false }).order('jam_masuk', { ascending: false });
+                
+                if (error) throw error;
+                tbody.innerHTML = '';
+
+                if (!data || data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="9" class="p-10 text-center">Tidak ada data ditemukan.</td></tr>';
+                    return;
+                }
+
+                data.forEach((row, index) => {
+                    const jamIn = row.jam_masuk || "-"; 
+                    const isLate = jamIn > "07:30"; 
+                    const jamOut = (row.jam_pulang && row.jam_pulang !== "NULL") ? row.jam_pulang : '-';
+                    const fotoUrl = row.foto_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(row.nama)}&background=random`;
+
+                    tbody.innerHTML += `
+                        <tr class="border-b border-gray-100 hover:bg-gray-50 transition">
+                            <td class="p-4 text-center">${index + 1}</td>
+                            <td class="p-4 text-center">
+                                <img src="${fotoUrl}" class="w-10 h-12 rounded mx-auto object-cover cursor-pointer border shadow-sm" 
+                                onclick="perbesarFoto('${fotoUrl}', '${row.nama}')">
+                            </td>
+                            <td class="p-4">
+                                <b class="text-gray-900">${row.nama}</b><br>
+                                <span class="text-[9px] text-gray-500 font-bold">NIP. ${row.nip}</span>
+                            </td>
+                            <td class="p-4 text-[10px] text-gray-600 font-semibold">${row.jabatan}</td>
+                            <td class="p-4 text-center font-mono">${row.tanggal ? row.tanggal.split('-').reverse().join('/') : '-'}</td>
+                            <td class="p-4 text-center">
+                                <span class="font-bold text-sm ${isLate ? 'text-red-600' : 'text-green-600'}">${jamIn}</span><br>
+                                <span class="text-[8px] font-black ${isLate ? 'late-badge' : 'ontime-badge'} px-2 py-0.5 rounded shadow-sm">
+                                    ${isLate ? 'TERLAMBAT' : 'TEPAT WAKTU'}
+                                </span>
+                            </td>
+                            <td class="p-4 text-center font-bold text-gray-700">${jamOut}</td>
+                            <td class="p-4 text-center">
+                                <span class="${jamOut !== '-' ? 'bg-blue-600' : 'bg-orange-500'} text-white px-2 py-1 rounded font-black text-[8px] shadow-sm">
+                                    ${jamOut !== '-' ? 'SELESAI' : 'DI KANTOR'}
+                                </span>
+                            </td>
+                            <td class="p-4 text-center">
+                                <button onclick="hapusData(${row.id})" class="text-gray-300 hover:text-red-600 transition text-lg">🗑️</button>
+                            </td>
+                        </tr>`;
+                });
+            } catch (err) { 
+                console.error(err);
+                tbody.innerHTML = '<tr><td colspan="9" class="p-10 text-center text-red-500">Gagal memuat data. Periksa tabel di Supabase.</td></tr>';
             }
-
-            data.forEach((row, index) => {
-                const jamIn = row.jam_masuk || "-"; 
-                const isLate = jamIn > "07:30"; 
-                const jamOut = (row.jam_pulang && row.jam_pulang !== "NULL") ? row.jam_pulang : '-';
-                const fotoUrl = row.foto_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(row.nama)}&background=random`;
-
-                tbody.innerHTML += `
-                    <tr class="border-b border-gray-100 hover:bg-gray-50 transition">
-                        <td class="p-4 text-center">${index + 1}</td>
-                        <td class="p-4 text-center">
-                            <img src="${fotoUrl}" class="w-10 h-12 rounded mx-auto object-cover cursor-pointer border shadow-sm" 
-                            onclick="perbesarFoto('${fotoUrl}', '${row.nama}')">
-                        </td>
-                        <td class="p-4">
-                            <b class="text-gray-900">${row.nama}</b><br>
-                            <span class="text-[9px] text-gray-500 font-bold">NIP. ${row.nip}</span>
-                        </td>
-                        <td class="p-4 text-[10px] text-gray-600 font-semibold">${row.jabatan}</td>
-                        <td class="p-4 text-center font-mono">${row.tanggal ? row.tanggal.split('-').reverse().join('/') : '-'}</td>
-                        <td class="p-4 text-center">
-                            <span class="font-bold text-sm ${isLate ? 'text-red-600' : 'text-green-600'}">${jamIn}</span><br>
-                            <span class="text-[8px] font-black ${isLate ? 'late-badge' : 'ontime-badge'} px-2 py-0.5 rounded shadow-sm">
-                                ${isLate ? 'TERLAMBAT' : 'TEPAT WAKTU'}
-                            </span>
-                        </td>
-                        <td class="p-4 text-center font-bold text-gray-700">${jamOut}</td>
-                        <td class="p-4 text-center">
-                            <span class="${jamOut !== '-' ? 'bg-blue-600' : 'bg-orange-500'} text-white px-2 py-1 rounded font-black text-[8px] shadow-sm">
-                                ${jamOut !== '-' ? 'SELESAI' : 'DI KANTOR'}
-                            </span>
-                        </td>
-                        <td class="p-4 text-center">
-                            <button onclick="hapusData(${row.id})" class="text-gray-300 hover:text-red-600 transition text-lg">🗑️</button>
-                        </td>
-                    </tr>`;
-            });
-        } catch (err) { 
-            console.error(err);
-            tbody.innerHTML = '<tr><td colspan="9" class="p-10 text-center text-red-500">Gagal memuat data. Periksa tabel di Supabase.</td></tr>';
         }
-    }
 
-    function exportToExcelPuas() {
-        const rows = document.querySelectorAll('#table-body tr');
-        if (rows.length === 0 || rows[0].innerText.includes("Memuat")) return alert("Data kosong!");
+        function exportToExcelPuas() {
+            const rows = document.querySelectorAll('#table-body tr');
+            if (rows.length === 0 || rows[0].innerText.includes("Memuat")) return alert("Data kosong!");
+            
+            const dataTable = [["NO", "NIP", "NAMA PEGAWAI", "JABATAN", "TANGGAL", "MASUK", "PULANG", "KETERANGAN"]];
+            
+            rows.forEach((row, index) => {
+                const cols = row.querySelectorAll('td');
+                if (cols.length >= 8) {
+                    const nama = cols[2].querySelector('b').innerText.toUpperCase();
+                    const nip = cols[2].querySelector('span').innerText.replace('NIP. ', '');
+                    const tgl = cols[4].innerText;
+                    const masuk = cols[5].querySelector('span').innerText;
+                    const pulang = cols[6].innerText;
+                    const status = cols[5].querySelectorAll('span')[1].innerText;
+                    dataTable.push([index + 1, "'" + nip, nama, cols[3].innerText, tgl, masuk, pulang, status]);
+                }
+            });
+
+            const ws = XLSX.utils.aoa_to_sheet([
+                ["PEMERINTAH PROVINSI JAWA BARAT"],
+                ["DINAS SUMBER DAYA AIR"],
+                ["UPTD PENGELOLAAN SUMBER DAYA AIR WILAYAH SUNGAI CITANDUY"],
+                ["Jl.R.A.A WIRATANUNINGRAT NO.3 KOTA TASIKMALAYA"],
+                [""],
+                ["REKAPITULASI DAFTAR HADIR PEGAWAI"],
+                ["Periode: " + (document.getElementById('filter-mulai').value || "-") + " s/d " + (document.getElementById('filter-sampai').value || "-")],
+                [""],
+                ...dataTable,
+                [""],
+                ["", "", "", "", "", "", "Tasikmalaya, " + new Date().toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'})],
+                ["", "", "", "", "", "", "Kepala UPTD PSDA WS Citanduy"],
+                [""], [""],
+                ["", "", "", "", "", "", "Irwan, S.T., M.T."],
+                ["", "", "", "", "", "", "NIP. 19283746552423"]
+            ]);
+
+            ws['!merges'] = [{s:{r:0,c:0},e:{r:0,c:7}}, {s:{r:1,c:0},e:{r:1,c:7}}, {s:{r:2,c:0},e:{r:2,c:7}}, {s:{r:3,c:0},e:{r:3,c:7}}, {s:{r:5,c:0},e:{r:5,c:7}}, {s:{r:6,c:0},e:{r:6,c:7}}];
+            ws['!cols'] = [{wch:5}, {wch:25}, {wch:35}, {wch:30}, {wch:15}, {wch:10}, {wch:10}, {wch:15}];
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Rekap_Absensi");
+            XLSX.writeFile(wb, "Rekap_Absensi_Citanduy.xlsx");
+        }
+
+        function perbesarFoto(u, n) { 
+            document.getElementById('modal-img').src = u; 
+            document.getElementById('modal-name').innerText = n; 
+            document.getElementById('photo-modal').classList.remove('hidden'); 
+        }
+
+        function closeModal() { document.getElementById('photo-modal').classList.add('hidden'); }
+
+        async function hapusData(id) { 
+            if (confirm('Hapus data ini secara permanen?')) { 
+                const { error } = await dbSupabase.from(TABEL).delete().eq('id', id); 
+                if (error) alert("Gagal menghapus: " + error.message);
+                loadData(); 
+            } 
+        }
         
-        const dataTable = [["NO", "NIP", "NAMA PEGAWAI", "JABATAN", "TANGGAL", "MASUK", "PULANG", "KETERANGAN"]];
-        
-        rows.forEach((row, index) => {
-            const cols = row.querySelectorAll('td');
-            if (cols.length >= 8) {
-                const nama = cols[2].querySelector('b').innerText.toUpperCase();
-                const nip = cols[2].querySelector('span').innerText.replace('NIP. ', '');
-                const tgl = cols[4].innerText;
-                const masuk = cols[5].querySelector('span').innerText;
-                const pulang = cols[6].innerText;
-                const status = cols[5].querySelectorAll('span')[1].innerText;
-                dataTable.push([index + 1, "'" + nip, nama, cols[3].innerText, tgl, masuk, pulang, status]);
-            }
-        });
+        setInterval(() => {
+            const n = new Date();
+            document.getElementById('live-clock').innerText = n.toLocaleTimeString('id-ID', { hour12: false });
+            document.getElementById('live-date').innerText = n.toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
+        }, 1000);
 
-        const ws = XLSX.utils.aoa_to_sheet([
-            ["PEMERINTAH PROVINSI JAWA BARAT"],
-            ["DINAS SUMBER DAYA AIR"],
-            ["UPTD PENGELOLAAN SUMBER DAYA AIR WILAYAH SUNGAI CITANDUY"],
-            ["Jl.R.A.A WIRATANUNINGRAT NO.3 KOTA TASIKMALAYA"],
-            [""],
-            ["REKAPITULASI DAFTAR HADIR PEGAWAI"],
-            ["Periode: " + (document.getElementById('filter-mulai').value || "-") + " s/d " + (document.getElementById('filter-sampai').value || "-")],
-            [""],
-            ...dataTable,
-            [""],
-            ["", "", "", "", "", "", "Tasikmalaya, " + new Date().toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'})],
-            ["", "", "", "", "", "", "Kepala UPTD PSDA WS Citanduy"],
-            [""], [""],
-            ["", "", "", "", "", "", "Irwan, S.T., M.T."],
-            ["", "", "", "", "", "", "NIP. 19283746552423"]
-        ]);
-
-        ws['!merges'] = [{s:{r:0,c:0},e:{r:0,c:7}}, {s:{r:1,c:0},e:{r:1,c:7}}, {s:{r:2,c:0},e:{r:2,c:7}}, {s:{r:3,c:0},e:{r:3,c:7}}, {s:{r:5,c:0},e:{r:5,c:7}}, {s:{r:6,c:0},e:{r:6,c:7}}];
-        ws['!cols'] = [{wch:5}, {wch:25}, {wch:35}, {wch:30}, {wch:15}, {wch:10}, {wch:10}, {wch:15}];
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Rekap_Absensi");
-        XLSX.writeFile(wb, "Rekap_Absensi_Citanduy.xlsx");
-    }
-
-    function perbesarFoto(u, n) { 
-        document.getElementById('modal-img').src = u; 
-        document.getElementById('modal-name').innerText = n; 
-        document.getElementById('photo-modal').classList.remove('hidden'); 
-    }
-
-    function closeModal() { document.getElementById('photo-modal').classList.add('hidden'); }
-
-    async function hapusData(id) { 
-        if (confirm('Hapus data ini secara permanen?')) { 
-            await dbSupabase.from('laporan_absen').delete().eq('id', id); 
-            loadData(); 
-        } 
-    }
-    
-    // Live Clock
-    setInterval(() => {
-        const n = new Date();
-        document.getElementById('live-clock').innerText = n.toLocaleTimeString('id-ID', { hour12: false });
-        document.getElementById('live-date').innerText = n.toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
-    }, 1000);
-
-    window.onload = loadData;
+        window.onload = loadData;
 </script>
 </body>
 </html>
