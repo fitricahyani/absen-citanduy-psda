@@ -170,15 +170,15 @@
 </div>
 
 <script>
-  // Konfigurasi Supabase
-const SB_URL = 'https://cktrzythksyayhbxdxdn.supabase.co'; 
+    // Konfigurasi Supabase
+    const SB_URL = 'https://cktrzythksyayhbxdxdn.supabase.co'; 
     const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNrdHJ6eXRoa3N5YXloYnhkeGRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0OTY5NTMsImV4cCI6MjA5MDA3Mjk1M30.hj1NaPkhmPJJ7gCJ5Q-gQTpueWXiNmxVhGz-x5-81QQ';
-const { createClient } = supabase;
+    const { createClient } = supabase;
+    const _supabase = createClient(SB_URL, SB_KEY);
+    
+    // VARIABEL INI TADI KURANG:
+    const TABEL = 'laporan_absen';
 
-// PASTIKAN pakai SB_URL dan SB_KEY, jangan SUPABASE_URL
-const _supabase = createClient(SB_URL, SB_KEY);
-
-    // Update Jam Real-time
     function updateWaktu() {
         const sekarang = new Date();
         const jam = String(sekarang.getHours()).padStart(2, '0');
@@ -208,7 +208,6 @@ const _supabase = createClient(SB_URL, SB_KEY);
         const jamSekarang = sekarang.getHours();
         const menitSekarang = sekarang.getMinutes();
 
-        // Validasi Jam Pulang (Minimal 16:00)
         if(status === 'Pulang' && jamSekarang < 16) {
             return alert("Belum waktunya pulang! Minimal jam 16:00.");
         }
@@ -222,7 +221,6 @@ const _supabase = createClient(SB_URL, SB_KEY);
 
             try {
                 if(status === 'Masuk') {
-                    // Cek Keterlambatan (Batas 07:30)
                     let statusKehadiran = 'Hadir';
                     if (jamSekarang > 7 || (jamSekarang === 7 && menitSekarang > 30)) {
                         statusKehadiran = 'Terlambat';
@@ -231,12 +229,14 @@ const _supabase = createClient(SB_URL, SB_KEY);
                     let url = "";
                     if(foto) {
                         const name = `${Date.now()}_${nip}.jpg`;
-                        await _supabase.storage.from('foto-absen').upload(name, foto);
+                        const upload = await _supabase.storage.from('foto-absen').upload(name, foto);
+                        if(upload.error) throw new Error("Gagal upload foto: " + upload.error.message);
+                        
                         const { data } = _supabase.storage.from('foto-absen').getPublicUrl(name);
                         url = data.publicUrl;
                     }
 
-                    await _supabase.from(TABEL).insert([{ 
+                    const { error } = await _supabase.from(TABEL).insert([{ 
                         nip, 
                         nama, 
                         jabatan, 
@@ -247,17 +247,28 @@ const _supabase = createClient(SB_URL, SB_KEY);
                         foto_url: url 
                     }]);
 
+                    if(error) throw error;
+
                     alert(statusKehadiran === 'Terlambat' ? "Absen Berhasil (Anda Terlambat!)" : "Absen Masuk Berhasil!");
                 } else {
-                    // Proses Pulang
-                    const { data } = await _supabase.from(TABEL).select('id').eq('nip', nip).eq('tanggal', tgl).maybeSingle();
-                    if(!data) throw new Error("Data masuk hari ini tidak ditemukan!");
+                    const { data, error: selectError } = await _supabase.from(TABEL)
+                        .select('id')
+                        .eq('nip', nip)
+                        .eq('tanggal', tgl)
+                        .maybeSingle();
+
+                    if(selectError || !data) throw new Error("Data masuk hari ini tidak ditemukan!");
                     
-                    await _supabase.from(TABEL).update({ jam_pulang: jamMenitString }).eq('id', data.id);
+                    const { error: updateError } = await _supabase.from(TABEL)
+                        .update({ jam_pulang: jamMenitString })
+                        .eq('id', data.id);
+
+                    if(updateError) throw updateError;
                     alert("Absen Pulang Berhasil!");
                 }
                 location.reload();
             } catch (e) { 
+                console.error(e);
                 alert("Error: " + e.message); 
             } finally { 
                 document.getElementById('loader').style.display = 'none'; 
